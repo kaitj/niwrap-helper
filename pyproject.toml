@@ -1,0 +1,79 @@
+[project]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+name = "niwrap-helper"
+description = "Utility functions for working with NiWrap"
+authors = [
+    { "name" = "Jason Kai", "email" = "21226986+kaitj@users.noreply.github.com" },
+]
+license = "MIT"
+readme = "README.md"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "bids2table>=0.1.0",
+    "niwrap>=0.3.5",
+    "styxdocker>=0.3.0",
+    "styxsingularity>=0.3.0",
+]
+
+[project.urls]
+Repository = "https://github.com/kaitj/niwrap-helper"
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+source = ["src/"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "_version.py"
+
+[dependency-groups]
+dev = ["mypy>=1.15.0", "pre-commit>=4.1.0", "ruff>=0.9.6"]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+src = ["src"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ANN", "D", "E", "F", "I"]
+ignore = [
+    "ANN003", # **kwargs should not be annotated.
+    "ANN101", # self should not be annotated.
+    "ANN102", # cls should not be annotated.
+    "ANN401",
+]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
