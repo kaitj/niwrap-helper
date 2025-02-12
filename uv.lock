@@ -170,6 +170,7 @@ source = { editable = "." }
 dependencies = [
     { name = "bids2table" },
     { name = "niwrap" },
+    { name = "pyyaml" },
     { name = "styxdocker" },
     { name = "styxsingularity" },
 ]
@@ -185,6 +186,7 @@ dev = [
 requires-dist = [
     { name = "bids2table", specifier = ">=0.1.0" },
     { name = "niwrap", specifier = ">=0.3.5" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "styxdocker", specifier = ">=0.3.0" },
     { name = "styxsingularity", specifier = ">=0.3.0" },
 ]
