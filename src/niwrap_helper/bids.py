@@ -1,6 +1,7 @@
 """Utility functions for working with BIDS-associated objects."""
 
 from pathlib import Path
+from typing import overload
 
 import pandas as pd
 from bids2table import BIDSEntities, bids2table
@@ -24,6 +25,24 @@ def get_bids_table(
         columns="ent__extra_entities"
     )
     return b2t
+
+
+@overload
+def bids_path(
+    directory: bool = True, return_path: bool = False, **entities
+) -> Path: ...
+
+
+@overload
+def bids_path(
+    directory: bool = False, return_path: bool = True, **entities
+) -> Path: ...
+
+
+@overload
+def bids_path(
+    directory: bool = False, return_path: bool = False, **entities
+) -> str: ...
 
 
 def bids_path(
