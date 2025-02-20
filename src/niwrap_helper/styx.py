@@ -4,13 +4,47 @@ import logging
 import os
 import shutil
 from pathlib import Path
+from typing import overload
 
 import yaml
 from styxdefs import LocalRunner, OutputPathType, set_global_runner
 from styxdocker import DockerRunner
 from styxsingularity import SingularityRunner
 
-from niwrap_helper.types import StrPath, StyxRunner
+from niwrap_helper.types import (
+    DockerType,
+    LocalType,
+    SingularityType,
+    StrPath,
+    StyxRunner,
+)
+
+
+@overload
+def setup_styx(
+    image_map: StrPath | None,
+    runner: DockerType,
+    tmp_env: str = "LOCAL",
+    tmp_dir: str = "styx_tmp",
+) -> tuple[logging.Logger, DockerRunner]: ...
+
+
+@overload
+def setup_styx(
+    image_map: StrPath | None,
+    runner: SingularityType,
+    tmp_env: str = "LOCAL",
+    tmp_dir: str = "styx_tmp",
+) -> tuple[logging.Logger, SingularityRunner]: ...
+
+
+@overload
+def setup_styx(
+    image_map: StrPath | None,
+    runner: LocalType,
+    tmp_env: str = "LOCAL",
+    tmp_dir: str = "styx_tmp",
+) -> tuple[logging.Logger, LocalRunner]: ...
 
 
 def setup_styx(
