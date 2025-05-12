@@ -8,23 +8,24 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12"
+  "Programming Language :: Python :: 3.12",
 ]
 name = "niwrap-helper"
 description = "Utility functions for working with NiWrap"
 authors = [
-  {"name" = "Jason Kai", "email" = "21226986+kaitj@users.noreply.github.com"}
+  { "name" = "Jason Kai", "email" = "21226986+kaitj@users.noreply.github.com" },
 ]
 license = "MIT"
 readme = "README.md"
 dynamic = ["version"]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-  "bids2table==0.1.0",
+  "bids2table>=2.0.0",
   "niwrap>=0.5.3",
+  "pandas>=2.2.3",
   "pyyaml>=6.0.2",
   "styxdocker>=0.5.0",
-  "styxsingularity>=0.5.0"
+  "styxsingularity>=0.5.0",
 ]
 
 [project.urls]
@@ -55,8 +56,8 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["ANN", "D", "E", "F", "I"]
 ignore = [
-  "ANN003",  # **kwargs should not be annotated.
-  "ANN401"
+  "ANN003", # **kwargs should not be annotated.
+  "ANN401",
 ]
 fixable = ["ALL"]
 unfixable = []
@@ -78,6 +79,6 @@ line-ending = "auto"
 dev = [
   "mypy>=1.15.0",
   "pre-commit>=4.2.0",
-  "ruff>=0.11.6",
-  "types-pyyaml>=6.0.12.20250402"
+  "ruff>=0.11.9",
+  "types-pyyaml>=6.0.12.20250402",
 ]
