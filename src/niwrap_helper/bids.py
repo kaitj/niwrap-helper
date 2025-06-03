@@ -1,35 +1,65 @@
 """Utility functions for working with BIDS-associated objects."""
 
-from pathlib import Path
 from typing import Literal, overload
 
 import bids2table as b2t
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+from bids2table._pathlib import PathT, as_path
+from pandas import DataFrame
 
 from niwrap_helper.types import StrPath
 
 
+@overload
+def get_bids_table(
+    dataset_dir: StrPath, index: StrPath, return_type: Literal["pandas"]
+) -> DataFrame: ...
+
+
+@overload
+def get_bids_table(
+    dataset_dir: StrPath, index: StrPath, return_type: Literal["pyarrow"]
+) -> pa.Table: ...
+
+
 def get_bids_table(
     dataset_dir: StrPath,
-    index: StrPath = ".index.b2t",
-) -> pd.DataFrame:
+    index: StrPath | None = ".index.b2t",
+    return_type: Literal["pandas"] | Literal["pyarrow"] = "pandas",
+) -> pa.Table | DataFrame:
     """Get and return BIDSTable for a given dataset."""
-    dataset_dir = Path(dataset_dir)
+    dataset_dir = as_path(dataset_dir)
 
     # Get table
-    if (index_fp := (dataset_dir / index)).exists():
-        table: pa.Table = pq.read_table(index_fp)
+    if index is not None and (index_fp := (dataset_dir / index)).exists():
+        table = pq.read_table(index_fp)
     else:
-        tables = b2t.batch_index_dataset(b2t.find_bids_datasets(dataset_dir))
-        table: pa.Table = pa.concat_tables(tables)  # type: ignore[no-redef]
+        tables = b2t.batch_index_dataset(b2t.find_bids_datasets(dataset_dir))  # type: ignore
+        table = pa.concat_tables(tables)
 
-    # Normalize extra entities column
-    extra_entities_df = pd.json_normalize(table.column("extra_entities").to_pylist())
+    # Set each extra entity as separate column
+    extra_entities = table.column("extra_entities").to_pylist()
+    extra_entities_dicts = [
+        dict(pairs) if isinstance(pairs, list) else {} for pairs in extra_entities
+    ]
+    all_keys = set().union(*(d.keys() for d in extra_entities_dicts if d))
+
+    if all_keys:
+        extra_entities_dicts = [
+            {k: d.get(k) for k in all_keys} for d in extra_entities_dicts
+        ]
+        extra_entities_table = pa.Table.from_pylist(extra_entities_dicts)
+        table = pa.concat_tables(
+            [table, extra_entities_table], promote_options="default"
+        )
     table = table.drop(["extra_entities"])
 
-    return pd.concat([table.to_pandas(), extra_entities_df], axis=1)
+    dispatch = {"pandas": table.to_pandas, "pyarrow": lambda: table}
+    try:
+        return dispatch[return_type]()
+    except KeyError:
+        raise ValueError(f"Unsupported return_type: {return_type}")
 
 
 @overload
@@ -41,13 +71,13 @@ def bids_path(
 @overload
 def bids_path(
     directory: Literal[True], return_path: Literal[False], **entities
-) -> Path: ...
+) -> PathT: ...
 
 
 @overload
 def bids_path(
     directory: Literal[False], return_path: Literal[True], **entities
-) -> Path: ...
+) -> PathT: ...
 
 
 def bids_path(
