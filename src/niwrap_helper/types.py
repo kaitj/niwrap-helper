@@ -1,13 +1,13 @@
 """Custom types."""
 
-from pathlib import Path
 from typing import Literal, TypeAlias
 
+from bids2table._pathlib import PathT
 from styxdefs import LocalRunner
 from styxdocker import DockerRunner
 from styxsingularity import SingularityRunner
 
-StrPath = str | Path
+StrPath = str | PathT
 StyxRunner = LocalRunner | DockerRunner | SingularityRunner
 
 
