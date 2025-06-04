@@ -38,22 +38,23 @@ def get_bids_table(
         tables = b2t.batch_index_dataset(b2t.find_bids_datasets(dataset_dir))  # type: ignore
         table = pa.concat_tables(tables)
 
-    # Set each extra entity as separate column
-    extra_entities = table.column("extra_entities").to_pylist()
-    extra_entities_dicts = [
-        dict(pairs) if isinstance(pairs, list) else {} for pairs in extra_entities
-    ]
-    all_keys = set().union(*(d.keys() for d in extra_entities_dicts if d))
-
-    if all_keys:
+    # Set each extra entity as separate column, if it exists
+    if "extra_entities" in table.column_names:
+        extra_entities = table.column("extra_entities").to_pylist()
         extra_entities_dicts = [
-            {k: d.get(k) for k in all_keys} for d in extra_entities_dicts
+            dict(pairs) if isinstance(pairs, list) else {} for pairs in extra_entities
         ]
-        extra_entities_table = pa.Table.from_pylist(extra_entities_dicts)
-        table = pa.concat_tables(
-            [table, extra_entities_table], promote_options="default"
-        )
-    table = table.drop(["extra_entities"])
+        all_keys = set().union(*(d.keys() for d in extra_entities_dicts if d))
+
+        if all_keys:
+            extra_entities_dicts = [
+                {k: d.get(k) for k in all_keys} for d in extra_entities_dicts
+            ]
+            extra_entities_table = pa.Table.from_pylist(extra_entities_dicts)
+            table = pa.concat_tables(
+                [table, extra_entities_table], promote_options="default"
+            )
+        table = table.drop(["extra_entities"])
 
     dispatch = {"pandas": table.to_pandas, "pyarrow": lambda: table}
     try:
