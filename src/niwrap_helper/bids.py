@@ -13,13 +13,13 @@ from niwrap_helper.types import StrPath
 
 @overload
 def get_bids_table(
-    dataset_dir: StrPath, index: StrPath, return_type: Literal["pandas"]
+    dataset_dir: StrPath, index: StrPath | None, return_type: Literal["pandas"]
 ) -> DataFrame: ...
 
 
 @overload
 def get_bids_table(
-    dataset_dir: StrPath, index: StrPath, return_type: Literal["pyarrow"]
+    dataset_dir: StrPath, index: StrPath | None, return_type: Literal["pyarrow"]
 ) -> pa.Table: ...
 
 
