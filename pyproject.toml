@@ -20,11 +20,9 @@ readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
-  "bids2table>=2.1.0",
-  "niwrap>=0.6.1",
+  "bids2table[s3]>=2.1.1",
+  "niwrap>=0.6.3",
   "pyyaml>=6.0.2",
-  "styxdocker>=0.5.0",
-  "styxsingularity>=0.5.0"
 ]
 
 [project.urls]
@@ -76,8 +74,8 @@ line-ending = "auto"
 
 [dependency-groups]
 dev = [
-  "mypy>=1.16.0",
-  "pre-commit>=4.2.0",
-  "ruff>=0.11.12",
-  "types-pyyaml>=6.0.12.20250516"
+  "mypy>=1.17.1",
+  "pre-commit>=4.3.0",
+  "ruff>=0.12.10",
+  "types-pyyaml>=6.0.12.20250822"
 ]

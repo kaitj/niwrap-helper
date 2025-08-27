@@ -12,17 +12,38 @@ from niwrap_helper.types import StrPath
 
 def get_bids_table(
     dataset_dir: StrPath,
-    index: StrPath | None = ".index.b2t",
+    b2t_index: StrPath | None = None,
+    max_workers: int | None = 0,
+    verbose: bool = False,
 ) -> pa.Table:
-    """Get and return BIDSTable for a given dataset."""
-    dataset_dir = as_path(dataset_dir)
+    """Get and return BIDSTable for a given dataset.
+
+    Args:
+        dataset_dir: Path to dataset directory.
+        b2t_index: Path to bids2table parquet table. If provided and the file exists
+            the parquet table will be used. If 'None' or the file does not exist, the
+            dataset directory will be indexed.
+        max_workers: (bids2table) Number of indexing processes to run in parallel.
+            Setting `max_workers=0` (the default) uses the main process only. Setting
+            `max_workers=None` starts as many workers as there are available CPUs. See
+            `concurrent.futures.ProcessPoolExecutor` for details.
+        verbose: Show verbose messages.
+
+    Returns:
+        pyarrow.Table: A concatenated Arrow table index for all BIDS datasets.
+    """
+    ds_path = as_path(dataset_dir)
 
     # Load / generate table
-    index_fp = dataset_dir / index if index else None
-    if index_fp and index_fp.exists():
-        table = pq.read_table(index_fp)
+    b2t_fp = ds_path / b2t_index if b2t_index else None
+    if b2t_fp and b2t_fp.exists():
+        table = pq.read_table(b2t_fp)
     else:
-        tables = b2t.batch_index_dataset(b2t.find_bids_datasets(dataset_dir))  # type: ignore
+        tables = b2t.batch_index_dataset(
+            b2t.find_bids_datasets(ds_path),  # type: ignore
+            max_workers=max_workers,
+            show_progress=verbose,
+        )
         table = pa.concat_tables(tables)
 
     # Expand 'extra_entities' into columns
@@ -48,6 +69,10 @@ def get_bids_table(
 
 
 @overload
+def bids_path(**entities) -> str: ...
+
+
+@overload
 def bids_path(
     directory: Literal[False], return_path: Literal[False], **entities
 ) -> str: ...
@@ -68,7 +93,19 @@ def bids_path(
 def bids_path(
     directory: bool = False, return_path: bool = False, **entities
 ) -> StrPath:
-    """Generate BIDS name / path."""
+    """Generate BIDS name / path.
+
+    Args:
+        directory: Flag to return only parent directories - mutually exclusive with
+            'return_path'. If both set to false, only returns the file name.
+        return_path: Flag to return full path - mutually exclusive with 'directory'.
+            If both set to false, only returns the file name.
+        **entities: BIDS-entities provided as keyword arguments to be used for
+            formulating the BIDS filename / filepath.
+
+    Returns:
+        str: A BIDS-formatted filename or filepath.
+    """
     if directory and return_path:
         raise ValueError("Only one of 'directory' or 'return_path' can be True")
     name = b2t.format_bids_path(entities)
