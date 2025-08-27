@@ -15,14 +15,14 @@ def get_bids_table(
     index: StrPath | None = ".index.b2t",
 ) -> pa.Table:
     """Get and return BIDSTable for a given dataset."""
-    dataset_dir = as_path(dataset_dir)
+    ds_path: PathT = as_path(dataset_dir)
 
     # Load / generate table
-    index_fp = dataset_dir / index if index else None
+    index_fp = ds_path / index if index else None
     if index_fp and index_fp.exists():
         table = pq.read_table(index_fp)
     else:
-        tables = b2t.batch_index_dataset(b2t.find_bids_datasets(dataset_dir))  # type: ignore
+        tables = b2t.batch_index_dataset(b2t.find_bids_datasets(ds_path))  # type: ignore
         table = pa.concat_tables(tables)
 
     # Expand 'extra_entities' into columns
@@ -45,6 +45,10 @@ def get_bids_table(
         table = table.drop(["extra_entities"])
 
     return table
+
+
+@overload
+def bids_path(**entities) -> str: ...
 
 
 @overload
