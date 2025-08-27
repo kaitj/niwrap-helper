@@ -12,15 +12,15 @@ from niwrap_helper.types import StrPath
 
 def get_bids_table(
     dataset_dir: StrPath,
-    index: StrPath | None = ".index.b2t",
+    b2t_index: StrPath | None = None,
 ) -> pa.Table:
     """Get and return BIDSTable for a given dataset."""
-    ds_path: PathT = as_path(dataset_dir)
+    ds_path = as_path(dataset_dir)
 
     # Load / generate table
-    index_fp = ds_path / index if index else None
-    if index_fp and index_fp.exists():
-        table = pq.read_table(index_fp)
+    b2t_fp = ds_path / b2t_index if b2t_index else None
+    if b2t_fp and b2t_fp.exists():
+        table = pq.read_table(b2t_fp)
     else:
         tables = b2t.batch_index_dataset(b2t.find_bids_datasets(ds_path))  # type: ignore
         table = pa.concat_tables(tables)
