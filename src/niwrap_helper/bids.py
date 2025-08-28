@@ -48,22 +48,23 @@ def get_bids_table(
 
     # Expand 'extra_entities' into columns
     if "extra_entities" in table.column_names:
-        extra_entities = table.column("extra_entities").to_pylist()
+        extra_entities = table["extra_entities"].to_pylist()
         extra_entities_dicts = [
-            dict(pairs) if isinstance(pairs, list) else {} for pairs in extra_entities
+            dict(pairs) if isinstance(pairs, list) else {}
+            for pairs in extra_entities
         ]
-        all_keys = set().union(*(d.keys() for d in extra_entities_dicts if d))
-
+        all_keys = set().union(*(d.keys() for d in extra_entities_dicts))
         if all_keys:
             extra_entities_dicts = [
                 {k: d.get(k) for k in all_keys} for d in extra_entities_dicts
             ]
             extra_entities_table = pa.Table.from_pylist(extra_entities_dicts)
-            table = pa.concat_tables(
-                [table, extra_entities_table], promote_options="default"
+            extra_entities_table = extra_entities_table.append_column(
+                "path", table["path"]
             )
-
-        table = table.drop(["extra_entities"])
+            table = table.drop(
+                ["extra_entities"]
+            ).join(extra_entities_table, keys=["path"])
 
     return table
 
