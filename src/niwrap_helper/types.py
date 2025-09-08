@@ -8,7 +8,9 @@ from niwrap import DockerRunner, LocalRunner, SingularityRunner
 StrPath = str | PathT
 BaseRunner = DockerRunner | LocalRunner | SingularityRunner
 
-DockerType: TypeAlias = Literal["docker", "Docker", "DOCKER"]
+DockerType: TypeAlias = Literal[
+    "docker", "Docker", "DOCKER", "podman", "Podman", "PODMAN"
+]
 SingularityType: TypeAlias = Literal[
     "singularity", "Singularity", "SINGULARITY", "apptainer", "Apptainer", "APPTAINER"
 ]

@@ -108,6 +108,12 @@ def setup_styx(
     match runner.lower():
         case "docker":
             styx_runner = DockerRunner(images=images, *args, **kwargs)
+        case "podman":
+            # Re-use DockerRunner for Podman
+            # NOTE: May have to set `docker_user_id` == 0 to run as root user.
+            styx_runner = DockerRunner(
+                docker_executable="podman", images=images, *args, **kwargs
+            )
         case "singularity" | "apptainer":
             if images is None:
                 raise ValueError("No container mapping provided")
