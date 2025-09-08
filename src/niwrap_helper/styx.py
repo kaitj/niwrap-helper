@@ -7,13 +7,10 @@ from pathlib import Path
 from typing import Literal, overload
 
 import yaml
-from niwrap import (
-    DockerRunner,
-    GraphRunner,
-    LocalRunner,
-    SingularityRunner,
-    set_global_runner,
-)
+from styxdefs import LocalRunner, set_global_runner
+from styxdocker import DockerRunner
+from styxgraph import GraphRunner
+from styxsingularity import SingularityRunner
 
 from niwrap_helper.types import (
     BaseRunner,

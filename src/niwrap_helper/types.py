@@ -3,7 +3,9 @@
 from typing import Literal, TypeAlias
 
 from bids2table._pathlib import PathT
-from niwrap import DockerRunner, LocalRunner, SingularityRunner
+from styxdefs import LocalRunner
+from styxdocker import DockerRunner
+from styxsingularity import SingularityRunner
 
 StrPath = str | PathT
 BaseRunner = DockerRunner | LocalRunner | SingularityRunner
