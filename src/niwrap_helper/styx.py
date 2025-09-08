@@ -35,6 +35,8 @@ def setup_styx(
     tmp_dir: str,
     image_map: StrPath | dict[str, str] | None,
     graph_runner: Literal[False],
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, DockerRunner]: ...
 
 
@@ -45,6 +47,8 @@ def setup_styx(
     tmp_dir: str,
     image_map: StrPath | dict[str, str] | None,
     graph_runner: Literal[False],
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, SingularityRunner]: ...
 
 
@@ -55,6 +59,8 @@ def setup_styx(
     tmp_dir: str,
     image_map: StrPath | dict[str, str] | None,
     graph_runner: Literal[False],
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, LocalRunner]: ...
 
 
@@ -65,6 +71,8 @@ def setup_styx(
     tmp_dir: str,
     image_map: StrPath | dict[str, str] | None,
     graph_runner: Literal[True],
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, GraphRunner]: ...
 
 
@@ -74,6 +82,8 @@ def setup_styx(
     tmp_dir: str = "styx_tmp",
     image_map: StrPath | dict[str, str] | None = None,
     graph_runner: bool = False,
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, BaseRunner | GraphRunner]:
     """Setup Styx runner.
 
@@ -90,20 +100,20 @@ def setup_styx(
         A 2-tuple where the first element is the configured logger instance and the
         second is the initialized runner, optionally wrapped in GraphRunner.
     """
+    images = (
+        yaml.safe_load(Path(image_map).read_text())
+        if isinstance(image_map, (str, Path))
+        else image_map
+    )
     match runner.lower():
         case "docker":
-            styx_runner = DockerRunner()
+            styx_runner = DockerRunner(images=images, *args, **kwargs)
         case "singularity" | "apptainer":
-            if isinstance(image_map, (str, Path)):
-                styx_runner = SingularityRunner(
-                    images=yaml.safe_load(Path(image_map).read_text())
-                )
-            elif isinstance(image_map, dict):
-                styx_runner = SingularityRunner(images=image_map)
-            else:
+            if images is None:
                 raise ValueError("No container mapping provided")
+            styx_runner = SingularityRunner(images=images, *args, **kwargs)
         case _:
-            styx_runner = LocalRunner()
+            styx_runner = LocalRunner(*args, **kwargs)
 
     logger_name = styx_runner.logger_name
     styx_runner.data_dir = Path(os.getenv(tmp_env, "/tmp")) / tmp_dir
