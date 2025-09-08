@@ -86,7 +86,7 @@ def setup_styx(
 
     Args:
         runner: Type of StyxRunner to use - choices include
-            ['local', 'docker', 'singularity', 'apptainer']
+            ['local', 'docker', 'podman', 'singularity', 'apptainer']
         tmp_env: Environment variable to query for temporary folder. Defaults: 'LOCAL'
         tmp_dir: Working directory to output to. Defaults: '{tmp_env}/tmp_dir'
         image_map: Path to config file or dictionary containing container mappings to
