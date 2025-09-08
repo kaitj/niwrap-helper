@@ -107,12 +107,12 @@ def setup_styx(
     )
     match runner.lower():
         case "docker":
-            styx_runner = DockerRunner(images=images, *args, **kwargs)
+            styx_runner = DockerRunner(image_overrides=images, *args, **kwargs)
         case "podman":
             # Re-use DockerRunner for Podman
             # NOTE: May have to set `docker_user_id` == 0 to run as root user.
             styx_runner = DockerRunner(
-                docker_executable="podman", images=images, *args, **kwargs
+                docker_executable="podman", image_overrides=images, *args, **kwargs
             )
         case "singularity" | "apptainer":
             if images is None:
@@ -169,17 +169,7 @@ def save(files: Path | list[Path], out_dir: Path) -> None:
         files: Path or list of paths to save.
         out_dir: Output directory to save file(s) to
     """
-
-    def _save_file(fpath: Path) -> None:
-        """Save individual file, preserving directory structure."""
-        for part in fpath.parts:
-            if part.startswith("sub-"):
-                out_fpath = out_dir.joinpath(*fpath.parts[fpath.parts.index(part) :])
-                out_fpath.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(fpath, out_fpath)
-                return
-        raise ValueError(f"Unable to find relevant file path components for {fpath}")
-
+    out_dir.mkdir(parents=True, exist_ok=True)
     # Ensure `files` is iterable and process each one
     for file in [files] if isinstance(files, (str, Path)) else files:
-        _save_file(Path(file))
+        shutil.copy2(file, out_dir / Path(file).name)
