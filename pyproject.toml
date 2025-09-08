@@ -22,7 +22,7 @@ requires-python = ">=3.11"
 dependencies = [
   "bids2table[s3]>=2.1.1",
   "niwrap>=0.6.3",
-  "pyyaml>=6.0.2",
+  "pyyaml>=6.0.2"
 ]
 
 [project.urls]
@@ -53,8 +53,9 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["ANN", "D", "E", "F", "I"]
 ignore = [
-  "ANN003",  # **kwargs should not be annotated.
-  "ANN401"
+  "ANN002",  # *args should not be annotated
+  "ANN003",  # **kwargs should not be annotated
+  "D417"  # Ignore docstring descriptions for *args, **kwargs
 ]
 fixable = ["ALL"]
 unfixable = []
