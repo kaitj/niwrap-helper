@@ -2,12 +2,13 @@
 
 from typing import Literal, TypeAlias
 
-from bids2table._pathlib import PathT
+from bids2table._pathlib import Path, PathT
 from styxdefs import LocalRunner
 from styxdocker import DockerRunner
 from styxsingularity import SingularityRunner
 
-StrPath = str | PathT
+StrPath = str | Path
+StrPathT = str | PathT
 BaseRunner = DockerRunner | LocalRunner | SingularityRunner
 
 DockerType: TypeAlias = Literal[
