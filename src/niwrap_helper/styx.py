@@ -7,13 +7,10 @@ from pathlib import Path
 from typing import Literal, overload
 
 import yaml
-from niwrap import (
-    DockerRunner,
-    GraphRunner,
-    LocalRunner,
-    SingularityRunner,
-    set_global_runner,
-)
+from styxdefs import LocalRunner, set_global_runner
+from styxdocker import DockerRunner
+from styxgraph import GraphRunner
+from styxsingularity import SingularityRunner
 
 from niwrap_helper.types import (
     BaseRunner,
@@ -33,8 +30,10 @@ def setup_styx(
     runner: DockerType,
     tmp_env: str,
     tmp_dir: str,
-    image_map: StrPath | dict[str, str] | None,
+    image_map: StrPath | dict[str, StrPath] | None,
     graph_runner: Literal[False],
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, DockerRunner]: ...
 
 
@@ -43,8 +42,10 @@ def setup_styx(
     runner: SingularityType,
     tmp_env: str,
     tmp_dir: str,
-    image_map: StrPath | dict[str, str] | None,
+    image_map: StrPath | dict[str, StrPath] | None,
     graph_runner: Literal[False],
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, SingularityRunner]: ...
 
 
@@ -53,8 +54,10 @@ def setup_styx(
     runner: LocalType,
     tmp_env: str,
     tmp_dir: str,
-    image_map: StrPath | dict[str, str] | None,
+    image_map: StrPath | dict[str, StrPath] | None,
     graph_runner: Literal[False],
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, LocalRunner]: ...
 
 
@@ -63,8 +66,10 @@ def setup_styx(
     runner: str,
     tmp_env: str,
     tmp_dir: str,
-    image_map: StrPath | dict[str, str] | None,
+    image_map: StrPath | dict[str, StrPath] | None,
     graph_runner: Literal[True],
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, GraphRunner]: ...
 
 
@@ -72,14 +77,16 @@ def setup_styx(
     runner: str = "local",
     tmp_env: str = "LOCAL",
     tmp_dir: str = "styx_tmp",
-    image_map: StrPath | dict[str, str] | None = None,
+    image_map: StrPath | dict[str, StrPath] | None = None,
     graph_runner: bool = False,
+    *args,
+    **kwargs,
 ) -> tuple[logging.Logger, BaseRunner | GraphRunner]:
     """Setup Styx runner.
 
     Args:
         runner: Type of StyxRunner to use - choices include
-            ['local', 'docker', 'singularity', 'apptainer']
+            ['local', 'docker', 'podman', 'singularity', 'apptainer']
         tmp_env: Environment variable to query for temporary folder. Defaults: 'LOCAL'
         tmp_dir: Working directory to output to. Defaults: '{tmp_env}/tmp_dir'
         image_map: Path to config file or dictionary containing container mappings to
@@ -90,20 +97,27 @@ def setup_styx(
         A 2-tuple where the first element is the configured logger instance and the
         second is the initialized runner, optionally wrapped in GraphRunner.
     """
-    match runner.lower():
-        case "docker":
-            styx_runner = DockerRunner()
+    images = (
+        yaml.safe_load(Path(image_map).read_text())
+        if isinstance(image_map, (str, Path))
+        else image_map
+    )
+    match runner_exec := runner.lower():
+        case "docker" | "podman":
+            styx_runner = DockerRunner(
+                docker_executable=runner_exec,
+                image_overrides=images,
+                *args,
+                **kwargs,
+            )
         case "singularity" | "apptainer":
-            if isinstance(image_map, (str, Path)):
-                styx_runner = SingularityRunner(
-                    images=yaml.safe_load(Path(image_map).read_text())
-                )
-            elif isinstance(image_map, dict):
-                styx_runner = SingularityRunner(images=image_map)
-            else:
+            if images is None:
                 raise ValueError("No container mapping provided")
+            styx_runner = SingularityRunner(
+                singularity_executable=runner_exec, images=images, *args, **kwargs
+            )
         case _:
-            styx_runner = LocalRunner()
+            styx_runner = LocalRunner(*args, **kwargs)
 
     logger_name = styx_runner.logger_name
     styx_runner.data_dir = Path(os.getenv(tmp_env, "/tmp")) / tmp_dir
@@ -153,17 +167,7 @@ def save(files: Path | list[Path], out_dir: Path) -> None:
         files: Path or list of paths to save.
         out_dir: Output directory to save file(s) to
     """
-
-    def _save_file(fpath: Path) -> None:
-        """Save individual file, preserving directory structure."""
-        for part in fpath.parts:
-            if part.startswith("sub-"):
-                out_fpath = out_dir.joinpath(*fpath.parts[fpath.parts.index(part) :])
-                out_fpath.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(fpath, out_fpath)
-                return
-        raise ValueError(f"Unable to find relevant file path components for {fpath}")
-
+    out_dir.mkdir(parents=True, exist_ok=True)
     # Ensure `files` is iterable and process each one
     for file in [files] if isinstance(files, (str, Path)) else files:
-        _save_file(Path(file))
+        shutil.copy2(file, out_dir / Path(file).name)

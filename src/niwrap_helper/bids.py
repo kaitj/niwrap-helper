@@ -7,11 +7,11 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from bids2table._pathlib import PathT, as_path
 
-from niwrap_helper.types import StrPath
+from niwrap_helper.types import StrPath, StrPathT
 
 
 def get_bids_table(
-    dataset_dir: StrPath,
+    dataset_dir: StrPathT,
     b2t_index: StrPath | None = None,
     max_workers: int | None = 0,
     verbose: bool = False,
@@ -50,8 +50,7 @@ def get_bids_table(
     if "extra_entities" in table.column_names:
         extra_entities = table["extra_entities"].to_pylist()
         extra_entities_dicts = [
-            dict(pairs) if isinstance(pairs, list) else {}
-            for pairs in extra_entities
+            dict(pairs) if isinstance(pairs, list) else {} for pairs in extra_entities
         ]
         all_keys = set().union(*(d.keys() for d in extra_entities_dicts))
         if all_keys:
@@ -62,9 +61,9 @@ def get_bids_table(
             extra_entities_table = extra_entities_table.append_column(
                 "path", table["path"]
             )
-            table = table.drop(
-                ["extra_entities"]
-            ).join(extra_entities_table, keys=["path"])
+            table = table.drop(["extra_entities"]).join(
+                extra_entities_table, keys=["path"]
+            )
 
     return table
 
@@ -93,7 +92,7 @@ def bids_path(
 
 def bids_path(
     directory: bool = False, return_path: bool = False, **entities
-) -> StrPath:
+) -> StrPathT:
     """Generate BIDS name / path.
 
     Args:
