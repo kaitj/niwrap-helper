@@ -17,16 +17,16 @@ wheels = [
 
 [[package]]
 name = "bids2table"
-version = "2.1.1"
+version = "2.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bidsschematools" },
     { name = "pyarrow" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/05/3e84f4cae44e67ea33d7f89af7002f3f32199c285eacb4818e9c9cfccffc/bids2table-2.1.1.tar.gz", hash = "sha256:bdc0bd2432ab85343efc02a3a0ff4077083d4fa290c6e04228561f909320d22c", size = 99455, upload-time = "2025-08-27T18:05:42.849Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/0b/4417fa8d567a299c36bdb80c86372f747aa43373df26f86c29dda3011815/bids2table-2.1.2.tar.gz", hash = "sha256:26036a09c1066fd15f108032e4199cdfa72ab43108e4c0313305b827a9760025", size = 99479, upload-time = "2025-09-10T13:58:14.607Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/f5/f99044b2deee2d3240d140a051dc1f9cf91df4de2db408adb04e824af48c/bids2table-2.1.1-py3-none-any.whl", hash = "sha256:f0e618d0c7ad7dba12d7a4a69966d860f35767946d31e841f545c8302a6d5650", size = 19610, upload-time = "2025-08-27T18:05:41.555Z" },
+    { url = "https://files.pythonhosted.org/packages/79/95/57e15bbd99041bd42d1c64463fe6a2bebd6f6888f4ab85c0894f084c9cec/bids2table-2.1.2-py3-none-any.whl", hash = "sha256:a8f541c668dd5d6880a1ce65ff7610ca39946e687cf50c57492a7fa14320366a", size = 19626, upload-time = "2025-09-10T13:58:13.321Z" },
 ]
 
 [package.optional-dependencies]
@@ -344,7 +344,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bids2table", extras = ["s3"], specifier = ">=2.1.1" },
+    { name = "bids2table", extras = ["s3"], specifier = ">=2.1.2" },
     { name = "niwrap", specifier = ">=0.6.3" },
     { name = "pyyaml", specifier = ">=6.0.2" },
 ]
