@@ -5,9 +5,9 @@ from typing import Literal, overload
 import bids2table as b2t
 import pyarrow as pa
 import pyarrow.parquet as pq
-from bids2table._pathlib import PathT, as_path
+from bids2table._pathlib import as_path
 
-from niwrap_helper.types import StrPath, StrPathT
+from .types import PathT, StrPath, StrPathT
 
 
 def get_bids_table(
