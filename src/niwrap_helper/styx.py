@@ -131,9 +131,6 @@ def setup_styx(
 def gen_hash() -> str:
     """Generate hash for styx runner.
 
-    Args:
-        runner: Runner object to generate hash for
-
     Returns:
         str: Unique id + incremented execution counter as a hash string.
     """
@@ -144,11 +141,7 @@ def gen_hash() -> str:
 
 
 def cleanup() -> None:
-    """Clean up after completing run.
-
-    Args:
-        runner: Runner object to cleanup
-    """
+    """Clean up after completing run."""
     runner = niwrap.get_global_runner()
     base_runner = runner.base if isinstance(runner, niwrap.GraphRunner) else runner
     base_runner.execution_counter = 0
