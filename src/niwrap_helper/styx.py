@@ -6,13 +6,10 @@ import shutil
 from pathlib import Path
 from typing import Literal, overload
 
+import niwrap
 import yaml
-from styxdefs import LocalRunner, set_global_runner
-from styxdocker import DockerRunner
-from styxgraph import GraphRunner
-from styxsingularity import SingularityRunner
 
-from niwrap_helper.types import (
+from .types import (
     BaseRunner,
     DockerType,
     LocalType,
@@ -22,7 +19,7 @@ from niwrap_helper.types import (
 
 
 @overload
-def setup_styx() -> tuple[logging.Logger, LocalRunner]: ...
+def setup_styx() -> tuple[logging.Logger, niwrap.LocalRunner]: ...
 
 
 @overload
@@ -34,7 +31,7 @@ def setup_styx(
     graph_runner: Literal[False],
     *args,
     **kwargs,
-) -> tuple[logging.Logger, DockerRunner]: ...
+) -> tuple[logging.Logger, niwrap.DockerRunner]: ...
 
 
 @overload
@@ -46,7 +43,7 @@ def setup_styx(
     graph_runner: Literal[False],
     *args,
     **kwargs,
-) -> tuple[logging.Logger, SingularityRunner]: ...
+) -> tuple[logging.Logger, niwrap.SingularityRunner]: ...
 
 
 @overload
@@ -58,7 +55,7 @@ def setup_styx(
     graph_runner: Literal[False],
     *args,
     **kwargs,
-) -> tuple[logging.Logger, LocalRunner]: ...
+) -> tuple[logging.Logger, niwrap.LocalRunner]: ...
 
 
 @overload
@@ -70,7 +67,7 @@ def setup_styx(
     graph_runner: Literal[True],
     *args,
     **kwargs,
-) -> tuple[logging.Logger, GraphRunner]: ...
+) -> tuple[logging.Logger, niwrap.GraphRunner]: ...
 
 
 def setup_styx(
@@ -81,7 +78,7 @@ def setup_styx(
     graph_runner: bool = False,
     *args,
     **kwargs,
-) -> tuple[logging.Logger, BaseRunner | GraphRunner]:
+) -> tuple[logging.Logger, BaseRunner | niwrap.GraphRunner]:
     """Setup Styx runner.
 
     Args:
@@ -96,6 +93,9 @@ def setup_styx(
     Returns:
         A 2-tuple where the first element is the configured logger instance and the
         second is the initialized runner, optionally wrapped in GraphRunner.
+
+    Raises:
+        ValueError: if StyxRunner is not set.
     """
     images = (
         yaml.safe_load(Path(image_map).read_text())
@@ -104,7 +104,7 @@ def setup_styx(
     )
     match runner_exec := runner.lower():
         case "docker" | "podman":
-            styx_runner = DockerRunner(
+            niwrap.use_docker(
                 docker_executable=runner_exec,
                 image_overrides=images,
                 *args,
@@ -113,29 +113,22 @@ def setup_styx(
         case "singularity" | "apptainer":
             if images is None:
                 raise ValueError("No container mapping provided")
-            styx_runner = SingularityRunner(
+            niwrap.use_singularity(
                 singularity_executable=runner_exec, images=images, *args, **kwargs
             )
         case _:
-            styx_runner = LocalRunner(*args, **kwargs)
+            niwrap.use_local(*args, **kwargs)
 
-    logger_name = styx_runner.logger_name
+    styx_runner = niwrap.get_global_runner()
     styx_runner.data_dir = Path(os.getenv(tmp_env, "/tmp")) / tmp_dir
+    logger_name = styx_runner.logger_name
     if graph_runner:
-        styx_runner = GraphRunner(styx_runner)
-    set_global_runner(styx_runner)
-
+        niwrap.use_graph(styx_runner)
+        styx_runner = niwrap.get_global_runner()
     return logging.getLogger(logger_name), styx_runner
 
 
-def _get_base_runner(runner: BaseRunner | GraphRunner) -> BaseRunner:
-    """Return base styx runner used."""
-    if isinstance(runner, GraphRunner):
-        return runner.base
-    return runner
-
-
-def gen_hash(runner: BaseRunner | GraphRunner) -> str:
+def gen_hash() -> str:
     """Generate hash for styx runner.
 
     Args:
@@ -144,18 +137,20 @@ def gen_hash(runner: BaseRunner | GraphRunner) -> str:
     Returns:
         str: Unique id + incremented execution counter as a hash string.
     """
-    base_runner = _get_base_runner(runner=runner)
+    runner = niwrap.get_global_runner()
+    base_runner = runner.base if isinstance(runner, niwrap.GraphRunner) else runner
     base_runner.execution_counter += 1
     return f"{base_runner.uid}_{base_runner.execution_counter - 1}"
 
 
-def cleanup(runner: BaseRunner | GraphRunner) -> None:
+def cleanup() -> None:
     """Clean up after completing run.
 
     Args:
         runner: Runner object to cleanup
     """
-    base_runner = _get_base_runner(runner=runner)
+    runner = niwrap.get_global_runner()
+    base_runner = runner.base if isinstance(runner, niwrap.GraphRunner) else runner
     base_runner.execution_counter = 0
     shutil.rmtree(base_runner.data_dir)
 
