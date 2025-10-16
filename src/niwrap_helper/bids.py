@@ -46,25 +46,36 @@ def get_bids_table(
         )
         table = pa.concat_tables(tables)
 
-    # Expand 'extra_entities' into columns
-    if "extra_entities" in table.column_names:
-        extra_entities = table["extra_entities"].to_pylist()
-        extra_entities_dicts = [
-            dict(pairs) if isinstance(pairs, list) else {} for pairs in extra_entities
-        ]
-        all_keys = set().union(*(d.keys() for d in extra_entities_dicts))
-        if all_keys:
-            extra_entities_dicts = [
-                {k: d.get(k) for k in all_keys} for d in extra_entities_dicts
-            ]
-            extra_entities_table = pa.Table.from_pylist(extra_entities_dicts)
-            extra_entities_table = extra_entities_table.append_column(
-                "path", table["path"]
-            )
-            table = table.drop(["extra_entities"]).join(
-                extra_entities_table, keys=["path"]
-            )
+    if "extra_entities" not in table.column_names:
+        return table
 
+    # Expand "extra_entities"
+    extra_entities = table["extra_entities"].to_pylist()
+    extra_entities_dicts = []
+    all_keys: set = set()
+    for ent in extra_entities:
+        d = dict(ent) if isinstance(ent, list) else {}
+        all_keys.update(d.keys())
+        extra_entities_dicts.append(d)
+    if not all_keys:
+        return table
+    all_keys = set(sorted(all_keys))
+    rows = [{k: d.get(k, None) for k in all_keys} for d in extra_entities_dicts]
+    extra_entities_table = pa.Table.from_pylist(rows).append_column(
+        "path", table["path"]
+    )
+    # Conditional sorting to ensure deterministic join
+    paths_main = table["path"].to_pylist()
+    paths_extra = extra_entities_table["path"].to_pylist()
+    if paths_main != paths_extra:
+        table = table.sort_by([("path", "ascending")])
+        extra_entities_table = extra_entities_table.sort_by([("path", "ascending")])
+    # Append only new columns
+    existing = set(table.column_names)
+    table = table.drop(["extra_entities"])
+    for name in extra_entities_table.column_names:
+        if name != "path" and name not in existing:
+            table = table.append_column(name, extra_entities_table[name])
     return table
 
 

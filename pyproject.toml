@@ -8,7 +8,8 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13"
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14"
 ]
 name = "niwrap-helper"
 description = "Utility functions for working with NiWrap"
@@ -44,7 +45,7 @@ ignore_missing_imports = true
 line-length = 88
 indent-width = 4
 src = ["src"]
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["ANN", "D", "E", "F", "I"]
@@ -71,8 +72,8 @@ line-ending = "auto"
 
 [dependency-groups]
 dev = [
-  "mypy>=1.17.1",
+  "mypy>=1.18.2",
   "pre-commit>=4.3.0",
-  "ruff>=0.12.10",
-  "types-pyyaml>=6.0.12.20250822"
+  "ruff>=0.14.0",
+  "types-pyyaml>=6.0.12.20250915"
 ]
