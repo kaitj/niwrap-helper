@@ -121,11 +121,12 @@ def setup_styx(
 
     styx_runner = niwrap.get_global_runner()
     styx_runner.data_dir = Path(os.getenv(tmp_env, "/tmp")) / tmp_dir
-    logger_name = styx_runner.logger_name
+    logger = logging.getLogger(styx_runner.logger_name)
+    logger.setLevel(logging.INFO)
     if graph_runner:
         niwrap.use_graph(styx_runner)
         styx_runner = niwrap.get_global_runner()
-    return logging.getLogger(logger_name), styx_runner
+    return logger, styx_runner
 
 
 def gen_hash() -> str:
