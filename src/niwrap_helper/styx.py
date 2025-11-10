@@ -7,14 +7,12 @@ from pathlib import Path
 from typing import Literal, overload
 
 import niwrap
-import yaml
 
 from .types import (
     BaseRunner,
     DockerType,
     LocalType,
     SingularityType,
-    StrPath,
 )
 
 
@@ -27,7 +25,7 @@ def setup_styx(
     runner: DockerType,
     tmp_env: str,
     tmp_dir: str,
-    image_map: StrPath | dict[str, StrPath] | None,
+    image_overrides: dict[str, str] | None,
     graph_runner: Literal[False],
     *args,
     **kwargs,
@@ -39,7 +37,7 @@ def setup_styx(
     runner: SingularityType,
     tmp_env: str,
     tmp_dir: str,
-    image_map: StrPath | dict[str, StrPath] | None,
+    image_overrides: dict[str, str] | None,
     graph_runner: Literal[False],
     *args,
     **kwargs,
@@ -51,7 +49,7 @@ def setup_styx(
     runner: LocalType,
     tmp_env: str,
     tmp_dir: str,
-    image_map: StrPath | dict[str, StrPath] | None,
+    image_overrides: dict[str, str] | None,
     graph_runner: Literal[False],
     *args,
     **kwargs,
@@ -63,7 +61,7 @@ def setup_styx(
     runner: str,
     tmp_env: str,
     tmp_dir: str,
-    image_map: StrPath | dict[str, StrPath] | None,
+    image_overrides: dict[str, str] | None,
     graph_runner: Literal[True],
     *args,
     **kwargs,
@@ -74,7 +72,7 @@ def setup_styx(
     runner: str = "local",
     tmp_env: str = "LOCAL",
     tmp_dir: str = "styx_tmp",
-    image_map: StrPath | dict[str, StrPath] | None = None,
+    image_overrides: dict[str, str] | None = None,
     graph_runner: bool = False,
     *args,
     **kwargs,
@@ -86,8 +84,7 @@ def setup_styx(
             ['local', 'docker', 'podman', 'singularity', 'apptainer']
         tmp_env: Environment variable to query for temporary folder. Defaults: 'LOCAL'
         tmp_dir: Working directory to output to. Defaults: '{tmp_env}/tmp_dir'
-        image_map: Path to config file or dictionary containing container mappings to
-            disk.
+        image_overrides: Dictionary containing overrides for container tags
         graph_runner: Flag to make use of GraphRunner middleware.
 
     Returns:
@@ -97,24 +94,20 @@ def setup_styx(
     Raises:
         ValueError: if StyxRunner is not set.
     """
-    images = (
-        yaml.safe_load(Path(image_map).read_text())
-        if isinstance(image_map, (str, Path))
-        else image_map
-    )
     match runner_exec := runner.lower():
         case "docker" | "podman":
             niwrap.use_docker(
                 docker_executable=runner_exec,
-                image_overrides=images,
+                image_overrides=image_overrides,
                 *args,
                 **kwargs,
             )
         case "singularity" | "apptainer":
-            if images is None:
-                raise ValueError("No container mapping provided")
             niwrap.use_singularity(
-                singularity_executable=runner_exec, images=images, *args, **kwargs
+                singularity_executable=runner_exec,
+                image_overrides=image_overrides,
+                *args,
+                **kwargs,
             )
         case _:
             niwrap.use_local(*args, **kwargs)
