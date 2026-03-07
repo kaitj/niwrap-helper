@@ -1,155 +1,132 @@
-"""Styx-related functions."""
+"""Styx-associated helpers."""
 
 import logging
 import os
 import shutil
+import tempfile
 from pathlib import Path
-from typing import Literal, overload
+from typing import Literal, overload, NamedTuple
 
 import niwrap
+from styxpodman import PodmanRunner
 
-from .types import (
-    BaseRunner,
-    DockerType,
-    LocalType,
-    SingularityType,
-)
+_LOG_LEVELS = (logging.WARNING, logging.INFO, logging.DEBUG)
 
+_RUNNER_LITERAL = Literal["local", "docker", "singularity", "apptainer", "podman"]
 
-@overload
-def setup_styx() -> tuple[logging.Logger, niwrap.LocalRunner]: ...
-
-
-@overload
-def setup_styx(
-    runner: DockerType,
-    tmp_env: str,
-    tmp_dir: str,
-    image_overrides: dict[str, str] | None,
-    graph_runner: Literal[False],
-    *args,
-    **kwargs,
-) -> tuple[logging.Logger, niwrap.DockerRunner]: ...
-
-
-@overload
-def setup_styx(
-    runner: SingularityType,
-    tmp_env: str,
-    tmp_dir: str,
-    image_overrides: dict[str, str] | None,
-    graph_runner: Literal[False],
-    *args,
-    **kwargs,
-) -> tuple[logging.Logger, niwrap.SingularityRunner]: ...
-
-
-@overload
-def setup_styx(
-    runner: LocalType,
-    tmp_env: str,
-    tmp_dir: str,
-    image_overrides: dict[str, str] | None,
-    graph_runner: Literal[False],
-    *args,
-    **kwargs,
-) -> tuple[logging.Logger, niwrap.LocalRunner]: ...
-
-
-@overload
-def setup_styx(
-    runner: str,
-    tmp_env: str,
-    tmp_dir: str,
-    image_overrides: dict[str, str] | None,
-    graph_runner: Literal[True],
-    *args,
-    **kwargs,
-) -> tuple[logging.Logger, niwrap.GraphRunner]: ...
-
+class StyxContext(NamedTuple):
+    """Styx execution context with logger, runner, and verbosity."""
+    logger: logging.Logger
+    runner: niwrap.Runner
+    verbose: bool
 
 def setup_styx(
-    runner: str = "local",
-    tmp_env: str = "LOCAL",
-    tmp_dir: str = "styx_tmp",
+    runner: _RUNNER_LITERAL = "local",
+    tmp_dir: str | Path | None = None,
     image_overrides: dict[str, str] | None = None,
-    graph_runner: bool = False,
-    *args,
+    graph: bool = False,
+    verbose: int = 0
     **kwargs,
 ) -> tuple[logging.Logger, BaseRunner | niwrap.GraphRunner]:
-    """Setup Styx runner.
+    """Set up Styx with the appropriate runner for NiWrap.
 
     Args:
-        runner: Type of StyxRunner to use - choices include
-            ['local', 'docker', 'podman', 'singularity', 'apptainer']
-        tmp_env: Environment variable to query for temporary folder. Defaults: 'LOCAL'
-        tmp_dir: Working directory to output to. Defaults: '{tmp_env}/tmp_dir'
-        image_overrides: Dictionary containing overrides for container tags
-        graph_runner: Flag to make use of GraphRunner middleware.
+        runner: Container/execution backend.  One of
+            ``'local'``, ``'apptainer'``, ``'docker'``,
+            ``'podman'``, or ``'singularity'``.
+        tmp_dir: Parent directory for the temporary working directory.
+            Defaults to the system temp directory.
+        image_overrides: Optional mapping of tool name → container image tag.
+        graph: When ``True``, wrap the runner in a
+            :class:`niwrap.GraphRunner` middleware.
+        verbose: Verbosity level (0 = WARNING, 1 = INFO, 2+ = DEBUG).
+        **kwargs: Extra keyword arguments forwarded to the runner constructor.
 
     Returns:
-        A 2-tuple where the first element is the configured logger instance and the
-        second is the initialized runner, optionally wrapped in GraphRunner.
+        :class:`StyxContext` containing the configured logger, runner, and
+        a boolean flag indicating whether verbose output is active.
 
     Raises:
-        ValueError: if StyxRunner is not set.
+        NotImplementedError: For unrecognized ``runner`` values.
     """
     match runner_exec := runner.lower():
-        case "docker" | "podman":
+        case "local":
+            niwrap.use_local()
+        case "docker":
             niwrap.use_docker(
                 docker_executable=runner_exec,
                 image_overrides=image_overrides,
-                *args,
                 **kwargs,
             )
-        case "singularity" | "apptainer":
+        case "podman":
+            niwrap.set_global_runner(
+                runner=PodmanRunner(
+                    podman_executable=runner_exec,
+                    image_overrides=image_overrides,
+                    podman_user_id=0,
+                    **kwargs,
+                )
+            )
+        case "apptainer" | "singularity":
             niwrap.use_singularity(
-                singularity_executable=runner_exec,
+                singularity_executable="singularity",
                 image_overrides=image_overrides,
-                *args,
                 **kwargs,
             )
         case _:
-            niwrap.use_local(*args, **kwargs)
+            raise NotImplementedError(
+                f"Unknown runner selection '{runner}' - please select one of "
+                "'local', 'apptainer', 'docker', 'podman', or 'singularity'"
+            )
 
     styx_runner = niwrap.get_global_runner()
-    styx_runner.data_dir = Path(os.getenv(tmp_env, "/tmp")) / tmp_dir
+    styx_runner.data_dir = Path(tempfile.mkdtemp(dir=tmp_dir))
+
     logger = logging.getLogger(styx_runner.logger_name)
-    logger.setLevel(logging.INFO)
-    if graph_runner:
+    logger.setLevel(_LOG_LEVELS[min(verbose, len(_LOG_LEVELS) - 1)])
+
+    if graph:
         niwrap.use_graph(styx_runner)
         styx_runner = niwrap.get_global_runner()
-    return logger, styx_runner
 
+    return StyxContext(logger=logger, runner=styx_runner, verbose=verbose > 0)
 
-def gen_hash() -> str:
-    """Generate hash for styx runner.
+def _get_base_runner() -> niwrap.StyxRunner:
+    """Unwrap GraphRunner middleware to retrieve the underlying base runner."""
+    runner = niwrap.get_global_runner()
+    return runner.base if isinstance(runner, niwrap.GraphRunner) else runner
+
+def generate_exec_folder(suffix: str = "python") -> Path:
+    """Generate an execution folder following the Styx hash pattern.
+
+    Args:
+        suffix: Label appended to the folder name (default: ``'python'``).
 
     Returns:
-        str: Unique id + incremented execution counter as a hash string.
+        :class:`~pathlib.Path` to the newly created execution folder.
     """
-    runner = niwrap.get_global_runner()
-    base_runner = runner.base if isinstance(runner, niwrap.GraphRunner) else runner
-    base_runner.execution_counter += 1
-    return f"{base_runner.uid}_{base_runner.execution_counter - 1}"
+    base = _get_base_runner()
+    dir_path = Path(base.data_dir) / f"{base.uid}_{base.execution_counter}_{suffix}"
+    dir_path.mkdir(parents=True)
+    base.execution_counter += 1
+    return dir_path
 
 
-def cleanup() -> None:
-    """Clean up after completing run."""
-    runner = niwrap.get_global_runner()
-    base_runner = runner.base if isinstance(runner, niwrap.GraphRunner) else runner
-    base_runner.execution_counter = 0
-    shutil.rmtree(base_runner.data_dir)
+def cleanup_session() -> None:
+    """Clean up temporary data after completing a NiWrap session."""
+    base = _get_base_runner()
+    base.execution_counter = 0
+    shutil.rmtree(base.data_dir, ignore_errors=True)
 
 
 def save(files: Path | list[Path], out_dir: Path) -> None:
-    """Copy niwrap outputted file(s) to specified output directory.
+    """Copy NiWrap-output file(s) to the specified directory.
 
     Args:
-        files: Path or list of paths to save.
-        out_dir: Output directory to save file(s) to
+        files: A single path or a list of paths to copy.
+        out_dir: Destination directory (created if absent).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    # Ensure `files` is iterable and process each one
-    for file in [files] if isinstance(files, (str, Path)) else files:
+    items: list[Path] = [files] if isinstance(files, (str, Path)) else list(files)
+    for file in items:
         shutil.copy2(file, out_dir / Path(file).name)

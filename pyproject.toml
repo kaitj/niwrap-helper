@@ -12,7 +12,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 name = "niwrap-helper"
-description = "Utility functions for working with NiWrap"
+description = "Helpful utility functions for working NiWrap and BIDS."
 authors = [
   { "name" = "Jason Kai", "email" = "21226986+kaitj@users.noreply.github.com" },
 ]
@@ -20,7 +20,7 @@ license = "MIT"
 readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.11"
-dependencies = ["bids2table[s3]>=2.1.2", "niwrap>=0.8.0"]
+dependencies = ["bids2table[s3]>=2.1.2", "niwrap>=0.9.1", "styxpodman"]
 
 [project.urls]
 Repository = "https://github.com/kaitj/niwrap-helper"
@@ -48,12 +48,38 @@ src = ["src"]
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["ANN", "D", "E", "F", "I"]
-ignore = [
-  "ANN002", # *args should not be annotated
-  "ANN003", # **kwargs should not be annotated
-  "D417",   # Ignore docstring descriptions for *args, **kwargs
+select = [
+  "ANN",  # flake8-annotations
+  "ARG",  # flake8-unused-arguments
+  "B",    # flake8-bugbear
+  "C4",   # flake8-comprehensions
+  "C90",  # mccabe
+  "D",    # pydocstyle
+  "E",    # pycodestyle errors
+  "ERA",  # eradicate
+  "F",    # Pyflakes
+  "FA",   # flake8-future-annotations
+  "FBT",  # flake8-boolean-trap
+  "FURB", # refurb
+  "I",    # isort
+  "N",    # pep8-naming
+  "NPY",  # NumPy-specific rules
+  "PD",   # pandas-vet
+  "PERF", # Perflint
+  "PIE",  # flake8-pie
+  "PT",   # flake8-pytest-style
+  "PTH",  # flake8-use-pathlib
+  "Q",    # flake8-quotes
+  "RET",  # flake8-return
+  "RUF",  # Ruff-specific rules
+  "S",    # flake8-bandit
+  "SIM",  # flake8-simplify
+  "T20",  # flake8-print
+  "TID",  # flake8-tidy-imports
+  "TC",   # flake8-type-checking
+  "UP",   # pyupgrade
 ]
+ignore = []
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
@@ -62,7 +88,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = []
+"tests/**/*.py" = ["S101"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -70,10 +96,15 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
+[tool.uv.sources]
+styxpodman = { git = "https://github.com/styx-api/styxpodman", rev = "1382977" }
+
 [dependency-groups]
 dev = [
-  "mypy>=1.18.2",
-  "pre-commit>=4.5.0",
-  "ruff>=0.14.6",
+  "mypy>=1.19.1",
+  "prek>=0.3.4",
+  "pytest>=9.0.2",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.15.5",
   "types-pyyaml>=6.0.12.20250915",
 ]
