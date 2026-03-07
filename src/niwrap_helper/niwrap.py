@@ -1,11 +1,12 @@
 """Styx-associated helpers."""
 
+from __future__ import annotations
+
 import logging
-import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Literal, overload, NamedTuple
+from typing import Literal, NamedTuple
 
 import niwrap
 from styxpodman import PodmanRunner
@@ -14,20 +15,23 @@ _LOG_LEVELS = (logging.WARNING, logging.INFO, logging.DEBUG)
 
 _RUNNER_LITERAL = Literal["local", "docker", "singularity", "apptainer", "podman"]
 
+
 class StyxContext(NamedTuple):
     """Styx execution context with logger, runner, and verbosity."""
+
     logger: logging.Logger
     runner: niwrap.Runner
     verbose: bool
+
 
 def setup_styx(
     runner: _RUNNER_LITERAL = "local",
     tmp_dir: str | Path | None = None,
     image_overrides: dict[str, str] | None = None,
-    graph: bool = False,
-    verbose: int = 0
-    **kwargs,
-) -> tuple[logging.Logger, BaseRunner | niwrap.GraphRunner]:
+    graph: bool = False,  # noqa: FBT001, FBT002 - graph runner flag
+    verbose: int = 0,
+    **kwargs,  # noqa: ANN003 - kwargs for runners
+) -> StyxContext:
     """Set up Styx with the appropriate runner for NiWrap.
 
     Args:
@@ -69,7 +73,7 @@ def setup_styx(
             )
         case "apptainer" | "singularity":
             niwrap.use_singularity(
-                singularity_executable="singularity",
+                singularity_executable=runner_exec,
                 image_overrides=image_overrides,
                 **kwargs,
             )
@@ -91,10 +95,12 @@ def setup_styx(
 
     return StyxContext(logger=logger, runner=styx_runner, verbose=verbose > 0)
 
-def _get_base_runner() -> niwrap.StyxRunner:
+
+def _get_base_runner() -> niwrap.Runner | niwrap.GraphRunner:
     """Unwrap GraphRunner middleware to retrieve the underlying base runner."""
     runner = niwrap.get_global_runner()
     return runner.base if isinstance(runner, niwrap.GraphRunner) else runner
+
 
 def generate_exec_folder(suffix: str = "python") -> Path:
     """Generate an execution folder following the Styx hash pattern.
@@ -127,6 +133,6 @@ def save(files: Path | list[Path], out_dir: Path) -> None:
         out_dir: Destination directory (created if absent).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    items: list[Path] = [files] if isinstance(files, (str, Path)) else list(files)
+    items: list[Path] = [files] if isinstance(files, (str | Path)) else list(files)
     for file in items:
         shutil.copy2(file, out_dir / Path(file).name)
