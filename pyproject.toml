@@ -45,12 +45,14 @@ source = "vcs"
 
 [tool.mypy]
 ignore_missing_imports = true
+exclude = ["src/niwrap_helper/bids\\.py$", "tests/test_bids\\.py$"]
 
 [tool.ruff]
 line-length = 88
 indent-width = 4
 src = ["src"]
 target-version = "py312"
+extend-exclude = ["src/niwrap_helper/bids.py", "tests/test_bids.py"]
 
 [tool.ruff.lint]
 select = [
@@ -88,6 +90,10 @@ ignore = []
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"bids2table.format_bids_path".msg = "Prefer niwrap_helper.bids.bids_path"
+"bids2table.parse_bids_entities".msg = "Prefer niwrap_helper.bids.parse_bids_name"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
