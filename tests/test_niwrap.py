@@ -69,12 +69,12 @@ class TestGetBaseRunner:
 
 
 # ---------------------------------------------------------------------------
-# setup_styx
+# setup_runner
 # ---------------------------------------------------------------------------
 
 
 class TestSetupStyx:
-    """Tests for setup_styx: runner dispatch, logging, graph wrapping."""
+    """Tests for setup_runner: runner dispatch, logging, graph wrapping."""
 
     def _run(
         self,
@@ -85,7 +85,7 @@ class TestSetupStyx:
     ) -> tuple[Any, dict[str, MagicMock]]:
         import niwrap
 
-        from niwrap_helper.niwrap import setup_styx
+        from niwrap_helper.niwrap import setup_runner
 
         base = _make_base_runner()
 
@@ -97,9 +97,13 @@ class TestSetupStyx:
             patch.object(niwrap, "set_global_runner") as mock_set,
             patch.object(niwrap, "use_graph") as mock_graph,
             patch("niwrap_helper.niwrap.PodmanRunner") as mock_podman,
-            patch("tempfile.mkdtemp", return_value="/tmp/styx_fake"),  # noqa: S108
         ):
-            ctx = setup_styx(runner=runner_name, verbose=verbose, graph=graph, **kwargs)  # type: ignore[arg-type]
+            ctx = setup_runner(
+                runner=runner_name,  # type: ignore[arg-type]
+                verbose=verbose,
+                graph=graph,
+                **kwargs,
+            )
 
         return ctx, {
             "local": mock_local,
@@ -155,23 +159,29 @@ class TestSetupStyx:
         )
         mocks["set_global_runner"].assert_called_once()
 
+    def test_set_tmp_dir(self, tmp_path: Path) -> None:
+        """Test setting of data directory works."""
+        ctx, _ = self._run(runner_name="auto", tmp_dir=tmp_path)
+        assert ctx.runner.data_dir.is_relative_to(tmp_path)
+        assert ctx.runner.data_dir.exists()
+
     def test_unknown_runner_raises(self) -> None:
         """NotImplementedError raised for unrecognised runner name."""
         import niwrap
 
-        from niwrap_helper.niwrap import setup_styx
+        from niwrap_helper.niwrap import setup_runner
 
         with (
             patch.object(niwrap, "get_global_runner", return_value=_make_base_runner()),
             pytest.raises(NotImplementedError, match="Unknown runner"),
         ):
-            setup_styx(runner="invalid")  # type: ignore[arg-type]
+            setup_runner(runner="invalid")  # type: ignore[arg-type]
 
     def test_image_overrides_forwarded(self) -> None:
         """image_overrides is passed through to the selected backend."""
         import niwrap
 
-        from niwrap_helper.niwrap import setup_styx
+        from niwrap_helper.niwrap import setup_runner
 
         overrides = {"tool": "myimage:latest"}
 
@@ -180,7 +190,7 @@ class TestSetupStyx:
             patch.object(niwrap, "use_docker") as mock_docker,
             patch("tempfile.mkdtemp", return_value="/tmp/x"),  # noqa: S108
         ):
-            setup_styx(runner="docker", image_overrides=overrides)
+            setup_runner(runner="docker", image_overrides=overrides)
 
         mock_docker.assert_called_once_with(
             docker_executable="docker", image_overrides=overrides
@@ -225,7 +235,7 @@ class TestSetupStyx:
         """Returns a StyxContext and sets base.data_dir to the mkdtemp result."""
         import niwrap
 
-        from niwrap_helper.niwrap import StyxContext, setup_styx
+        from niwrap_helper.niwrap import StyxContext, setup_runner
 
         base = _make_base_runner()
 
@@ -234,7 +244,7 @@ class TestSetupStyx:
             patch.object(niwrap, "use_local"),
             patch("tempfile.mkdtemp", return_value="/tmp/styx_fake") as mock_mkdtemp,  # noqa: S108
         ):
-            ctx = setup_styx(runner="local")
+            ctx = setup_runner(runner="local")
 
         assert isinstance(ctx, StyxContext)
         mock_mkdtemp.assert_called_once_with(dir=None)
@@ -432,3 +442,43 @@ class TestSave:
         (out / "f.txt").write_text("old content")
         save(src, out)
         assert (out / "f.txt").read_text() == "new content"
+
+
+class TestResolveRunner:
+    """Test suite for resolve_runner."""
+
+    def test_auto_detects_available_runner(self) -> None:
+        """Test auto-detection picks first available runner."""
+        from niwrap_helper.niwrap import resolve_runner
+
+        with patch(
+            "niwrap_helper.niwrap.shutil.which",
+            side_effect=lambda exe: "/usr/bin/docker" if exe == "docker" else None,
+        ):
+            runner, exe = resolve_runner("auto")
+
+        assert runner == "docker"
+        assert exe == "docker"
+
+    def test_auto_falls_back_to_local(self) -> None:
+        """Test auto-detection falls back to local when nothing found."""
+        from niwrap_helper.niwrap import resolve_runner
+
+        with patch("niwrap_helper.niwrap.shutil.which", return_value=None):
+            runner, exe = resolve_runner("auto")
+
+        assert runner == "local"
+        assert exe == "local"
+
+    def test_auto_respects_preference_order(self) -> None:
+        """Test auto-detection prefers docker over podman over singularity."""
+        from niwrap_helper.niwrap import resolve_runner
+
+        available = {"podman", "apptainer"}
+        with patch(
+            "niwrap_helper.niwrap.shutil.which",
+            side_effect=lambda exe: f"/usr/bin/{exe}" if exe in available else None,
+        ):
+            runner, _ = resolve_runner("auto")
+
+        assert runner == "podman"

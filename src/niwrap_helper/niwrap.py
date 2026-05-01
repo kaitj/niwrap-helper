@@ -13,19 +13,49 @@ from styxpodman import PodmanRunner
 
 _LOG_LEVELS = (logging.WARNING, logging.INFO, logging.DEBUG)
 
-_RUNNER_LITERAL = Literal["local", "docker", "singularity", "apptainer", "podman"]
+RunnerType = Literal["local", "docker", "podman", "apptainer", "singularity"]
+
+_RUNNER_EXECUTABLES: list[tuple[RunnerType, list[str]]] = [
+    ("docker", ["docker"]),
+    ("podman", ["podman"]),
+    ("singularity", ["apptainer", "singularity"]),
+]
 
 
 class StyxContext(NamedTuple):
-    """Styx execution context with logger, runner, and verbosity."""
+    """Styx execution context with logger and runner."""
 
     logger: logging.Logger
     runner: niwrap.Runner
     verbose: bool
 
 
-def setup_styx(
-    runner: _RUNNER_LITERAL = "local",
+def resolve_runner(
+    runner: RunnerType | Literal["auto"] = "auto",
+) -> tuple[RunnerType, str]:
+    """Resolve runner selection, auto-detecting if needed.
+
+    When runner is "auto", checks for available container runtimes on PATH
+    in order of preference: docker > podman > apptainer/singularity > local.
+
+    Args:
+        runner: Runner type or "auto" for auto-detection.
+
+    Returns:
+        Tuple of (runner_type, executable_name).
+    """
+    if runner != "auto":
+        return runner, runner
+
+    for runner_type, executables in _RUNNER_EXECUTABLES:
+        for exe in executables:
+            if shutil.which(exe):
+                return runner_type, exe
+    return "local", "local"
+
+
+def setup_runner(
+    runner: RunnerType | Literal["auto"] = "auto",
     tmp_dir: str | Path | None = None,
     image_overrides: dict[str, str] | None = None,
     graph: bool = False,  # noqa: FBT001, FBT002 - graph runner flag
@@ -35,16 +65,14 @@ def setup_styx(
     """Set up Styx with the appropriate runner for NiWrap.
 
     Args:
-        runner: Container/execution backend.  One of
-            ``'local'``, ``'apptainer'``, ``'docker'``,
-            ``'podman'``, or ``'singularity'``.
-        tmp_dir: Parent directory for the temporary working directory.
-            Defaults to the system temp directory.
-        image_overrides: Optional mapping of tool name → container image tag.
+        runner: Type of runner to use. "auto" detects the first available
+            container runtime, falling back to "local".
+        tmp_dir: Working directory to output to
+        image_overrides: Dictionary containing overrides for container tags.
         graph: When ``True``, wrap the runner in a
             :class:`niwrap.GraphRunner` middleware.
         verbose: Verbosity level (0 = WARNING, 1 = INFO, 2+ = DEBUG).
-        **kwargs: Extra keyword arguments forwarded to the runner constructor.
+        **kwargs: Additional keyword arguments passed for runner setup.
 
     Returns:
         :class:`StyxContext` containing the configured logger, runner, and
@@ -53,7 +81,9 @@ def setup_styx(
     Raises:
         NotImplementedError: For unrecognized ``runner`` values.
     """
-    match runner_exec := runner.lower():
+    runner_type, runner_exec = resolve_runner(runner)
+
+    match runner_type:
         case "local":
             niwrap.use_local()
         case "docker":
@@ -80,20 +110,22 @@ def setup_styx(
         case _:
             raise NotImplementedError(
                 f"Unknown runner selection '{runner}' - please select one of "
-                "'local', 'apptainer', 'docker', 'podman', or 'singularity'"
+                "'auto', 'local', 'docker', 'podman', or 'singularity'"
             )
 
     styx_runner = niwrap.get_global_runner()
+    if tmp_dir is not None:
+        Path(tmp_dir).mkdir(parents=True, exist_ok=True)
     styx_runner.data_dir = Path(tempfile.mkdtemp(dir=tmp_dir))
 
-    logger = logging.getLogger(styx_runner.logger_name)
-    logger.setLevel(_LOG_LEVELS[min(verbose, len(_LOG_LEVELS) - 1)])
+    styx_logger = logging.getLogger(styx_runner.logger_name)
+    styx_logger.setLevel(_LOG_LEVELS[min(verbose, len(_LOG_LEVELS) - 1)])
 
     if graph:
         niwrap.use_graph(styx_runner)
         styx_runner = niwrap.get_global_runner()
 
-    return StyxContext(logger=logger, runner=styx_runner, verbose=verbose > 0)
+    return StyxContext(logger=styx_logger, runner=styx_runner, verbose=verbose > 0)
 
 
 def _get_base_runner() -> niwrap.Runner | niwrap.GraphRunner:
