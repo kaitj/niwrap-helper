@@ -112,10 +112,10 @@ styxpodman = {git = "https://github.com/styx-api/styxpodman", rev = "1382977"}
 
 [dependency-groups]
 dev = [
-  "mypy>=1.20.2",
-  "prek>=0.3.11",
+  "mypy>=2.1.0",
+  "prek>=0.4.3",
   "pytest>=9.0.3",
   "pytest-cov>=7.1.0",
-  "ruff>=0.15.12",
-  "types-pyyaml>=6.0.12.20260408"
+  "ruff>=0.15.15",
+  "types-pyyaml>=6.0.12.20260518"
 ]
