@@ -21,9 +21,9 @@ readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
-  "bids2table[s3]>=2.2.1",
-  "niwrap>=0.9.3",
-  "polars>=1.41.2",
+  "bids2table[cloud]>=2.3.0",
+  "niwrap>=0.9.3,<1.0",
+  "polars>=1.42.1",
   "styxpodman"
 ]
 
